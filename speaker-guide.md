@@ -18,7 +18,7 @@ The total planned speaking time is 15 minutes, followed by about 5 minutes of qu
 
 ## Suggested speaking parts
 
-For a team of four, one person can cover slides 1–5, one slides 6–10, one slides 11–15, and one slides 16–18. Adjust this to your actual team size. Every member should present a part, as requested in the assignment. Add actual member names to the Quarto author field before your final submission.
+For a team of four, one person can cover slides 1–5, one slides 6–10, one slides 11–15, and one slides 16–18. Adjust this to your actual team size. Every member should present a part, as requested in the assignment. The title slide now lists the four Team 4 members and their student IDs.
 
 ## What to understand before presenting
 
@@ -85,4 +85,4 @@ Use a larger judged benchmark, tune on development queries, evaluate on a separa
 
 ## Before submission
 
-Replace the group author line with the team members. Rehearse once with a timer. Submit the PDF and executed notebook, and keep the Quarto source for editing. If you change the collection, rerun the notebook and update the affected slide tables and explanations.
+Verify the team names and student IDs on the title slide. Rehearse once with a timer. Submit the PDF and executed notebook, and keep the Quarto source for editing. If you change the collection, rerun the notebook and update the affected slide tables and explanations.

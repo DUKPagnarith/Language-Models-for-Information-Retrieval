@@ -1,20 +1,23 @@
 ---
 title: "Language Models for Information Retrieval"
-subtitle: "Topic 2 · Query likelihood and smoothing"
-author: "Group discussion · Information Web Retrieval and Analytics"
+subtitle: "Team 4 · Topic 2 · Query likelihood and smoothing"
+author: "Team 4"
 date: "November 3, 2026"
 format:
   clean-revealjs:
     css: presentation.css
+    include-after-body:
+      - text: |
+          <script src="presentation-frame.js"></script>
     width: 1280
     height: 720
     margin: 0.08
     center: false
-    slide-number: c/t
+    slide-number: false
     transition: none
     navigation-mode: linear
     controls: false
-    progress: true
+    progress: false
     hash: true
     embed-resources: true
     html-math-method: katex
@@ -24,7 +27,7 @@ format:
 
 
 
-## The search problem
+## The search problem {data-chapter="1 Introduction & objectives"}
 
 A user types **“language model probability.”**
 
@@ -39,7 +42,7 @@ Time: 0:55.
 A search engine has to decide which documents to show first. Exact word matching gives us useful evidence, but it does not by itself explain how to combine that evidence. Here we ask how likely each document's language model is to generate the words in our query. Our goal is to give relevant documents a higher rank.
 :::
 
-## The query likelihood idea
+## The query likelihood idea {data-chapter="1 Introduction & objectives"}
 
 1. Estimate a language model for each document.
 2. Calculate how likely that model is to generate the query.
@@ -54,7 +57,7 @@ We can imagine each document as a small source of words. If a document often use
 Source: Manning, Raghavan and Schütze (2008), Chapter 12; Ponte and Croft (1998), https://ciir.cs.umass.edu/pubfiles/ir-120.pdf.
 :::
 
-## Connection to Lecture 2
+## Connection to Lecture 2 {data-chapter="2 Background"}
 
 | Lecture 2 | Our retrieval model |
 |---|---|
@@ -75,7 +78,7 @@ Lecture 2 gives us the foundation. A bigram model uses the previous word as cont
 Source: DORN Dawin, Lecture 2: NLP Foundations I: Bag-of-Words and Language Models, October 13, 2026, slides 4–8, 12–20.
 :::
 
-## Earlier retrieval methods
+## Earlier retrieval methods {data-chapter="2 Background"}
 
 | Method | How it matches | Main gap |
 |---|---|---|
@@ -91,7 +94,7 @@ Boolean AND is useful when we know exactly which terms are required, but it does
 Sources: Ponte and Croft (1998), https://doi.org/10.1145/290941.291008; course Lecture 2, slide 4; Manning et al. (2008), Chapter 12.
 :::
 
-## Scoring a document
+## Scoring a document {data-chapter="3 Methodology"}
 
 $$P_{\mathrm{MLE}}(w\mid d)=\frac{c(w,d)}{|d|}$$
 
@@ -107,7 +110,7 @@ The MLE estimate is a word's relative frequency in a document. Under the unigram
 Source: Lecture 2, slides 13–15; Manning et al., Chapter 12.
 :::
 
-## A missing word makes the whole product zero
+## A missing word makes the whole product zero {data-chapter="3 Methodology"}
 
 Query: **“search documents”**
 
@@ -125,7 +128,7 @@ This is the same problem as an unseen bigram in Lecture 2. Even though the docum
 Source: Lecture 2, slide 18.
 :::
 
-## Collection-based smoothing
+## Collection-based smoothing {data-chapter="3 Methodology"}
 
 $$P_\mu(w\mid d)=\frac{c(w,d)+\mu P(w\mid C)}{|d|+\mu}$$
 
@@ -145,7 +148,7 @@ Dirichlet smoothing adds pseudo-counts based on collection probabilities. The ef
 Source: Zhai and Lafferty (2001), https://www.cs.cmu.edu/~czhai/paper/sigir2001-smooth.pdf. Lecture 2, slide 20.
 :::
 
-## A worked calculation
+## A worked calculation {data-chapter="3 Methodology"}
 
 Collection: **14 tokens**, with `search` twice and `documents` three times.
 
@@ -162,7 +165,7 @@ Time: 0:50.
 This uses a separate three-document example, not the full experiment. Document A is search engines rank documents documents. B is search engines index web pages. C is language models rank documents. Their lengths sum to 14. Search occurs twice in the collection and documents occurs three times. After smoothing, document C receives a small nonzero probability for search. The notebook checks the exact calculation. C_doc means the particular document C, while the background collection probabilities use all three documents.
 :::
 
-## Parameters and assumptions
+## Parameters and assumptions {data-chapter="3 Methodology"}
 
 - We use **$\mu=20$** and **$\lambda=0.2$** in the main experiment.
 - Larger $\mu$ gives more weight to collection frequencies.
@@ -176,7 +179,7 @@ Time: 0:40.
 The experiment uses very short documents, with an average length of about 16 tokens, so mu 20 is an illustrative setting at that scale. We do not claim it is optimal. We later vary mu to see how the result changes. Collection smoothing cannot give positive probability to a word that is absent from the entire collection. We explicitly report ignored words. For a partly unknown query, we rank using the remaining words.
 :::
 
-## Experiment setup
+## Experiment setup {data-chapter="4 Experiment & results"}
 
 **15 documents · 5 queries · declared binary relevance labels**
 
@@ -194,7 +197,7 @@ Time: 0:40. Experiment section totals 4:00 across slides 11–15.
 Both methods use the same collection and tokenization. We keep stop words and do not stem, so model and models remain different terms. The five queries cover language models, smoothing, crawling, ranking, and car coverage. Labels are declared in the collection before we compare methods. We include all documents in the ranked lists, including zero-score tails, and break exact ties by document ID.
 :::
 
-## Python experiment
+## Python experiment {data-chapter="4 Experiment & results"}
 
 ```python
 experiment = RetrievalExperiment(documents)
@@ -214,7 +217,7 @@ Time: 0:40.
 We first count words in each document and in the whole collection. For each query, we estimate a probability for every known query term, add the log probabilities, and sort documents from highest to lowest. The full notebook also runs TF-IDF, MLE and JM. It saves all ranked lists and metrics as CSV files. No API or model download is needed to run the experiment.
 :::
 
-## Results on our collection
+## Results on our collection {data-chapter="4 Experiment & results"}
 
 ::: {.columns}
 ::: {.column width="64%"}
@@ -239,7 +242,7 @@ Time: 1:00.
 MAP is mean average precision over the full ranked lists. Recall at 3 is the fraction of relevant documents found in the first three results, averaged across queries. Both smoothed models tie TF-IDF on mean Recall at 3. They improve MAP on this example because of the insurance query on the next slide. MLE has many zero-probability ties, so its score depends on our declared document-ID tie order. With five handwritten queries, these results cannot show general superiority or statistical significance. MRR is 0.900 for TF-IDF, 0.815 for MLE, and 1.000 for JM and Dirichlet. Exact values are in results/summary.csv.
 :::
 
-## Why Q5 changes rank
+## Why Q5 changes rank {data-chapter="4 Experiment & results"}
 
 Query: **“car coverage”** · Intended need: vehicle insurance
 
@@ -257,7 +260,7 @@ Time: 0:50.
 D14 discusses a car park and uses car twice. D13 discusses insurance and uses coverage. TF-IDF favors D14, while smoothed query likelihood puts D13 first. We should keep the interpretation narrow. The method combines probabilities in a different way. It has not learned the meaning of automobile. If we change the query to car protection, protection is unknown and dropped, and both methods favor parking. That diagnostic failure is included in the notebook.
 :::
 
-## Sensitivity to smoothing
+## Sensitivity to smoothing {data-chapter="4 Experiment & results"}
 
 {{< include results/sensitivity-slide.md >}}
 
@@ -271,7 +274,7 @@ The values here come from the executed notebook. We should read the actual table
 Source for smoothing analysis background: Zhai and Lafferty (2001), https://www.cs.cmu.edu/~czhai/paper/sigir2001-smooth.pdf.
 :::
 
-## Limitations and comparison
+## Limitations and comparison {data-chapter="5 Limitations & discussion"}
 
 | Limitation | Consequence or next step |
 |---|---|
@@ -287,7 +290,7 @@ Time: 1:00. Limitations and discussion section totals 2:00 across slides 16–17
 The model remains limited by word counts. Bigrams or phrase features could help with order, while query expansion or dense retrieval could help with vocabulary mismatch. Our English tokenizer also needs a different segmentation strategy for Khmer. We have not measured retrieval latency or tested a large collection. Our experiment compares TF-IDF directly. BM25 is a further comparison to add, not a result we have already measured.
 :::
 
-## A documented IR system: Indri
+## A documented IR system: Indri {data-chapter="5 Limitations & discussion"}
 
 The **Lemur Project's Indri** uses language modeling for retrieval.
 
@@ -305,7 +308,7 @@ Indri gives us a concrete system example for the assignment. Its documentation e
 Sources: https://sourceforge.net/p/lemur/wiki/Indri%20Document%20Scoring/ and https://www.lemurproject.org/lemur/IndriQueryLanguage.php. Accessed November 3, 2026.
 :::
 
-## Conclusion and next steps
+## Conclusion and next steps {data-chapter="6 Conclusion & future work"}
 
 ::: {.big-statement}
 Query likelihood ranks documents by how likely their word distributions are to generate the query.
@@ -320,7 +323,7 @@ Time: 1:00. Conclusion and future work section.
 What we learned is that the probability estimates matter as much as the scoring formula. The method connects directly to Lecture 2 through counts, independence assumptions, logs, and smoothing. Our small experiment helps us understand the behavior, but a larger evaluation is needed before choosing a model for a real service. Thank you Lokru and everyone. We are ready for your questions.
 :::
 
-## References {.small}
+## References {.small data-chapter="7 References"}
 
 - DORN Dawin (2026). *Lecture 2: NLP Foundations I: Bag-of-Words and Language Models*. ITC, slides 4–8, 12–20.
 - *Group Discussion Topics: Retrieval Models*. Supplied handout, pp. 1 and 3.

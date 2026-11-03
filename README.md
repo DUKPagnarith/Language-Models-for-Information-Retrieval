@@ -6,10 +6,20 @@ Our main question: if each document has its own language model, which document i
 
 ![Presentation preview](assets/presentation-preview.png)
 
+## Team 4
+
+| Member | Student ID |
+|---|---|
+| Duk Pagnarith | e20220184 |
+| Leng Devid | e20220888 |
+| HOEURN SREYKA | e20220699 |
+| SOU PICHCHOMRONG | e20221074 |
+
 ## Files
 
 - `presentation.qmd`: editable Quarto Reveal.js presentation, with speaker notes and 15 minutes of suggested timing.
-- `presentation.css`: small content layout adjustments layered on the Clean theme.
+- `presentation.css`: content layout, chapter header, and Team 4 footer.
+- `presentation-frame.js`: per-slide labels and the four members with student IDs.
 - `_extensions/clean/`: the bundled upstream theme and its license.
 - `presentation.html`: rendered presentation. Open it in a browser. Press **S** for speaker notes and **F** for full screen.
 - `presentation.pdf`: slide submission copy, exported from the same Quarto presentation.
@@ -37,7 +47,7 @@ Run all notebook cells from top to bottom. No API key or data download is needed
 
 The slides use Grant McDermott's [Quarto Reveal.js Clean theme](https://github.com/grantmcdermott/quarto-revealjs-clean), version 1.5.0. The extension is bundled in `_extensions/clean`, so cloning this repository includes the theme. Its MIT license and upstream commit are retained there.
 
-The presentation selects `format: clean-revealjs`. The theme supplies the Roboto typography, white background, blue accents, minimal tables, and navigation styling. `presentation.css` only adds sizing for content helpers, equations, and code. Equations use embedded KaTeX instead of the extension's MathJax default. The results chart uses the theme's accent colors.
+The presentation selects `format: clean-revealjs`. The theme supplies the Roboto typography, white background, blue accents, minimal tables, and navigation styling. `presentation.css` adds content sizing and the top and bottom rules. Each slide shows its chapter above the top rule, with Team 4 and a page number below the bottom rule. `presentation-frame.js` adds these labels and the title-slide roster. Chapter labels are editable through `data-chapter` on each slide heading in `presentation.qmd`. Team names and student IDs are listed in `presentation-frame.js`. Equations use embedded KaTeX instead of the extension's MathJax default. The results chart uses the theme's accent colors.
 
 ## Render the presentation
 
