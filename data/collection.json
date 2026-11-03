@@ -1,0 +1,28 @@
+{
+  "description": "Handwritten teaching collection. Binary relevance labels are declared by the author, not benchmark judgments.",
+  "documents": {
+    "D01": "Search engines rank documents for a user query. Ranking helps users find relevant information.",
+    "D02": "An inverted index maps each term to documents. The index supports fast search over a collection.",
+    "D03": "A web crawler downloads web pages and follows links. Crawling collects pages for a search engine.",
+    "D04": "Language models assign probabilities to sequences of words. A unigram model uses individual word counts.",
+    "D05": "Query likelihood ranks documents using a document language model. It estimates the probability of the query.",
+    "D06": "Smoothing gives probability to unseen words. Dirichlet smoothing combines document counts with collection probabilities.",
+    "D07": "A bigram language model predicts a word using the previous word. Bigrams preserve local word order.",
+    "D08": "TF IDF weights terms using term frequency and inverse document frequency. Cosine similarity compares document and query vectors.",
+    "D09": "BM25 is a ranking function with term frequency saturation and document length normalization.",
+    "D10": "Relevance feedback expands a query using relevant documents. Expansion can reduce vocabulary mismatch in search.",
+    "D11": "Neural embeddings represent semantic meaning. Dense retrieval can match related words with different spellings.",
+    "D12": "Perplexity evaluates how well a language model predicts held out text. Lower perplexity means higher average token probability.",
+    "D13": "An automobile insurance policy covers vehicle damage and accident liability. Drivers pay a premium for coverage.",
+    "D14": "A car park provides parking spaces near the city market. Visitors leave a car while shopping.",
+    "D15": "Web pages contain links and text. An index stores web content so a search engine can retrieve pages."
+  },
+  "queries": [
+    {"id": "Q1", "text": "language model probability", "relevant": ["D04", "D05", "D07", "D12"]},
+    {"id": "Q2", "text": "unseen words smoothing", "relevant": ["D06"]},
+    {"id": "Q3", "text": "crawler web pages", "relevant": ["D03", "D15"]},
+    {"id": "Q4", "text": "ranking documents query", "relevant": ["D01", "D05"]},
+    {"id": "Q5", "text": "car coverage", "relevant": ["D13"]}
+  ],
+  "diagnostic_queries": ["car protection", "quantum teleportation", "language quantum"]
+}

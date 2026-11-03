@@ -1,0 +1,31 @@
+/*-- scss:defaults --*/
+$font-family-sans-serif: "Aptos", "Arial", sans-serif;
+$presentation-heading-font: "Aptos Display", "Aptos", "Arial", sans-serif;
+$body-bg: #f7f6f2;
+$body-color: #172c3b;
+$link-color: #086f82;
+$presentation-heading-color: #086f82;
+$presentation-font-size-root: 30px;
+$presentation-h1-font-size: 2.1em;
+$presentation-h2-font-size: 1.45em;
+$code-block-font-size: 0.70em;
+/*-- scss:rules --*/
+.reveal h1, .reveal h2 { font-weight: 650; letter-spacing: -0.025em; }
+.reveal h2 { margin-bottom: 0.7em; }
+.reveal p, .reveal li { line-height: 1.4; }
+.reveal strong { color: #086f82; }
+.reveal table { font-size: 0.78em; margin-top: 0.4em; }
+.reveal table th { color: #086f82; border-bottom: 2px solid #086f82; }
+.reveal table td { border-bottom: 1px solid #ccd4d5; padding: 0.4em; }
+.reveal .small { font-size: 0.73em; }
+.reveal .source { font-size: 0.52em; color: #52636b; margin-top: 1.1em; }
+.reveal .big-statement { font-size: 1.3em; line-height: 1.4; max-width: 90%; }
+.reveal pre { border-left: 4px solid #d88036; padding-left: 0.5em; }
+.reveal .slide-number { color: #52636b; }
+.reveal .slide-background { background-size: cover; }
+#title-slide .title { color: #f7f6f2; font-size: 2.0em; max-width: 100%; }
+#title-slide .subtitle { color: #83d3dc; font-size: 0.9em; }
+#title-slide .quarto-title-author { color: #f7f6f2; font-size: 0.65em; }
+#title-slide .date { color: #c5d5da; font-size: 0.65em; }
+.reveal .math.display { font-size: 0.92em; }
+@media print { .reveal .slide-number { display: block !important; } }
