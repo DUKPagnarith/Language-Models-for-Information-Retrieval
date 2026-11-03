@@ -12,8 +12,8 @@ Our main question: if each document has its own language model, which document i
 |---|---|
 | Duk Pagnarith | e20220184 |
 | Leng Devid | e20220888 |
-| HOEURN SREYKA | e20220699 |
-| SOU PICHCHOMRONG | e20221074 |
+| Hoeurn Sreyka | e20220699 |
+| Sou Pichchomrong | e20221074 |
 
 ## Files
 
