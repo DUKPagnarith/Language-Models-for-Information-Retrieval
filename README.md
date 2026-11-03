@@ -6,6 +6,12 @@ Our main question: if each document has its own language model, which document i
 
 ![Presentation preview](assets/presentation-preview.png)
 
+## Beginner learning guide
+
+Start with [the learning guide PDF](learning/learning-guide.pdf) if you would like to understand the foundations before presenting. It explains preprocessing, word probabilities, query likelihood, smoothing, TF-IDF, and every evaluation measure using worked examples. It also includes practice questions, answers, and a glossary.
+
+The editable Quarto source is [learning/learning-guide.qmd](learning/learning-guide.qmd). Render it with `quarto render learning/learning-guide.qmd`. This uses Quarto's bundled Typst PDF engine.
+
 ## Team 4
 
 | Member | Student ID |
