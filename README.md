@@ -4,9 +4,13 @@ This is our Topic 2 group discussion project for Information Web Retrieval and A
 
 Our main question: if each document has its own language model, which document is most likely to generate a given query?
 
+![Presentation preview](assets/presentation-preview.png)
+
 ## Files
 
 - `presentation.qmd`: editable Quarto Reveal.js presentation, with speaker notes and 15 minutes of suggested timing.
+- `presentation.css`: small content layout adjustments layered on the Clean theme.
+- `_extensions/clean/`: the bundled upstream theme and its license.
 - `presentation.html`: rendered presentation. Open it in a browser. Press **S** for speaker notes and **F** for full screen.
 - `presentation.pdf`: slide submission copy, exported from the same Quarto presentation.
 - `language_models_ir.ipynb`: explanation, full Python implementation, executed experiment, results, and defense questions. It also works by itself once the Python packages are installed.
@@ -28,6 +32,12 @@ jupyter lab language_models_ir.ipynb
 ```
 
 Run all notebook cells from top to bottom. No API key or data download is needed after installing the packages. The notebook creates the results and chart in the working directory.
+
+## Presentation theme
+
+The slides use Grant McDermott's [Quarto Reveal.js Clean theme](https://github.com/grantmcdermott/quarto-revealjs-clean), version 1.5.0. The extension is bundled in `_extensions/clean`, so cloning this repository includes the theme. Its MIT license and upstream commit are retained there.
+
+The presentation selects `format: clean-revealjs`. The theme supplies the Roboto typography, white background, blue accents, minimal tables, and navigation styling. `presentation.css` only adds sizing for content helpers, equations, and code. Equations use embedded KaTeX instead of the extension's MathJax default. The results chart uses the theme's accent colors.
 
 ## Render the presentation
 

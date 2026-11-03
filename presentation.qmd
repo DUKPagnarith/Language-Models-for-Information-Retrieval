@@ -4,8 +4,8 @@ subtitle: "Topic 2 · Query likelihood and smoothing"
 author: "Group discussion · Information Web Retrieval and Analytics"
 date: "November 3, 2026"
 format:
-  revealjs:
-    theme: [default, theme.scss]
+  clean-revealjs:
+    css: presentation.css
     width: 1280
     height: 720
     margin: 0.08
@@ -18,8 +18,6 @@ format:
     hash: true
     embed-resources: true
     html-math-method: katex
-    title-slide-attributes:
-      data-background-color: "#172c3b"
     pdf-separate-fragments: false
     show-notes: false
 ---

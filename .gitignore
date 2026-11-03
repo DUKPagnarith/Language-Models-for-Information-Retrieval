@@ -7,3 +7,6 @@ __pycache__/
 
 /.quarto/
 **/*.quarto_ipynb
+
+# Generated from the bundled Clean extension when rendering.
+/mathjax-config.js
