@@ -1,8 +1,8 @@
 ---
-title: "Understanding Query Likelihood"
-subtitle: "A beginner's guide to our language models experiment"
+title: "Understanding Search Ranking"
+subtitle: "A beginner's guide to query likelihood, TF-IDF, and BM25"
 author: "Prepared for Duk Pagnarith and Team 4"
-date: "2026-11-03"
+date: "2026-11-10"
 format:
   typst:
     papersize: a4
@@ -23,8 +23,8 @@ execute:
 ## What this guide will help you understand
 
 Our presentation contains several new terms at once: preprocessing, TF-IDF,
-MLE, Jelinek-Mercer, Dirichlet, P@3, Recall@3, MAP, and MRR. It is reasonable
-to need the basic ideas before discussing the experiment.
+query likelihood, smoothing, BM25, Precision@3, and MAP. It is reasonable to
+need the basic ideas before discussing the experiment.
 
 We will build those ideas step by step. Each explanation starts with an
 ordinary question, then uses a small example, and finally connects to our code.
@@ -35,7 +35,7 @@ when someone types a search query?
 ## How to study
 
 1. Read pages 2-6 to understand the problem and query likelihood.
-2. Read pages 7-9 to understand smoothing and the TF-IDF comparison.
+2. Read pages 7-9 to understand smoothing, TF-IDF, and BM25.
 3. Read pages 10-12 to understand evaluation and our actual results.
 4. Use page 13 to connect the ideas to Python.
 5. Try the questions on page 14 before reading the answers on page 15.
@@ -64,15 +64,15 @@ Our experiment table describes four different decisions:
 | Row in the slide | Meaning in ordinary language |
 |---|---|
 | Preprocessing | How we prepare text before counting words |
-| Baseline | A comparison method: TF-IDF cosine similarity |
-| Language models | Three ways to estimate probabilities for query likelihood |
-| Evaluation | How we check whether relevant documents appear near the top |
+| Retrieval methods | TF-IDF, Dirichlet query likelihood, and BM25 |
+| Language models | Ways to estimate probabilities for query likelihood |
+| Evaluation | Precision@3 and MAP show how relevant results are ordered |
 
 ## Did we use the query likelihood model?
 
 **Yes.** MLE, JM (0.2), and Dirichlet (20) all feed word probabilities into the
 same query-likelihood ranking idea. They differ in how they estimate those
-probabilities. TF-IDF is the separate comparison method.
+probabilities. TF-IDF and BM25 are separate lexical ranking methods we compare.
 
 | Method label | What it means in our experiment |
 |---|---|
@@ -80,15 +80,16 @@ probabilities. TF-IDF is the separate comparison method.
 | JM (0.2) | Query likelihood with Jelinek-Mercer smoothing; background weight 0.2 |
 | Dirichlet (20) | Query likelihood with Dirichlet smoothing; strength parameter 20 |
 | TF-IDF | Weighted word vectors compared using cosine similarity |
+| BM25 | A ranking score balancing rarity, repeated terms, and length |
 
 ## A useful distinction
 
 A **retrieval method** assigns scores and orders documents. An **evaluation
-measure** judges that ordering against relevance labels. MAP and MRR do not
-retrieve documents. They help us assess the results.
+measure** judges that ordering against relevance labels. Precision@3 and MAP
+do not retrieve documents. They help us assess the results.
 
 **Check your understanding:** Which is the ranking method: Dirichlet query
-likelihood or Recall@3? Which is the evaluation measure?
+likelihood or Precision@3? Which is the evaluation measure?
 
 {{< pagebreak >}}
 
@@ -422,195 +423,160 @@ toward its document frequency?
 
 {{< pagebreak >}}
 
-# 9. Relevance, P@3, Recall@3, and RR
+# 9. BM25: a balanced word-matching score
 
-Before evaluating, we need a judgment about which documents answer the query.
-These are **relevance labels**. A document containing a query word can still be
-irrelevant to the user's intended need.
+BM25 ranks documents using query words. It keeps three useful ideas:
 
-For this separate evaluation example, suppose **four documents are relevant**
-in an eight-document collection. The ranking is:
+1. **Rare words matter more.** A query word in fewer documents gets a higher IDF.
+2. **Repeating a word helps, but the benefit levels off.** This is term-frequency saturation.
+3. **Length is compared with the collection average.** A document is not penalized just for being longer than a short one.
 
-| Rank | Document | Relevant? |
+A common BM25 formula is:
+
+$$\operatorname{BM25}(d,q)=\sum_{t\in q}\operatorname{IDF}(t)
+\frac{f(t,d)(k_1+1)}{f(t,d)+k_1(1-b+b|d|/\operatorname{avgdl})}.$$
+
+Here $f(t,d)$ is the count of word $t$ in document $d$, $|d|$ is the document's
+length, and $\operatorname{avgdl}$ is the average document length. BM25 outputs
+a **ranking score**, not a probability that the document generated the query.
+
+## What do k1 and b control?
+
+- **$k_1$** controls how quickly repeated word counts level off. Common starting
+  value: 1.2.
+- **$b$** controls how strongly document length affects the score. At 0, length
+  is ignored. At 1, length is fully normalized. Common starting value: 0.75.
+
+These values work as starting settings; a search system may tune them on
+separate development queries.
+
+## Lecture 5's pizza example
+
+The query is `pizza oven`. The judged relevant documents are D1 and D3. D2
+repeats `pizza` many times but does not answer the user's need. D3 is a long,
+relevant guide.
+
+| Method | First two results | Precision@2 |
+|---|---|---:|
+| TF-IDF cosine | D1, D2 | 0.5 |
+| BM25 | D1, D3 | 1.0 |
+
+BM25 limits D2's repetition advantage and keeps the long relevant document D3
+near the top. This is Lecture 5's separate six-document example, not our
+15-document project experiment.
+
+**Check your understanding:** If a term appears 20 times instead of 10 in a
+document, does BM25's term contribution necessarily double?
+
+{{< pagebreak >}}
+
+# 10. Two measures for a ranked list
+
+First, a person needs to mark which documents are relevant to the query. A
+relevant document helps meet the user's information need; matching a word by
+itself is not enough.
+
+Suppose a ranking starts this way:
+
+| Rank | Result | Relevant? |
 |---:|---|---|
 | 1 | D1 | Yes |
 | 2 | D2 | No |
 | 3 | D3 | Yes |
-| 4 | D4 | No |
-| 5 | D5 | No |
-| 6 | D6 | Yes |
-| 7 | D7 | No |
-| 8 | D8 | Yes |
 
-## Precision at 3: how useful are the first three?
+## Precision@3: are the first three results useful?
 
-$$P@3=\frac{\text{relevant results in the first 3}}{3}
-=\frac23\approx0.667.$$
+$$P@3=\frac{\text{relevant results among the first 3}}{3}
+=\frac{2}{3}\approx0.667.$$
 
-Two of the three results we showed are relevant.
+Two of the three results shown are relevant.
 
-## Recall at 3: how much of the relevant material did we find?
+## Average Precision and MAP: are relevant results near the top?
 
-$$\operatorname{Recall}@3=
-\frac{\text{relevant results in the first 3}}{\text{all relevant documents}}
-=\frac24=0.5.$$
+**Average Precision (AP)** checks how many relevant results have appeared at
+each relevant position, then averages those precision values. In our small
+example, relevant documents are at ranks 1 and 3:
 
-We found half of the relevant documents within the first three results.
+$$AP=\frac{1/1+2/3}{2}=0.833.$$
 
-## Reciprocal rank: how soon is the first useful result?
+**Mean Average Precision (MAP)** is the average AP across all queries. P@3
+focuses on the top three; MAP uses the positions of relevant documents across
+the full ranking. Together they give us a clear view of early usefulness and
+overall ordering.
 
-The first relevant document is at rank 1, so **RR = 1/1 = 1**. If the first
-relevant result appeared at rank 4, RR would be 1/4 = 0.25. If none appears,
-RR is 0. Rank 1 is the top position in the list.
-
-**Check your understanding:** Could P@3 be 1/3 while Recall@3 is 1? Under what
-number of relevant documents would that happen?
-
-{{< pagebreak >}}
-
-# 10. Average precision, MAP, and MRR
-
-P@3 looks only at the first three positions. **Average precision (AP)** rewards
-putting all the relevant documents early in the ranked list.
-
-## Calculate AP for the previous page
-
-Only stop at ranks where a relevant document appears. At each such rank,
-calculate precision using all results up to that position.
-
-| Relevant rank | Relevant results found so far | Precision at that rank |
-|---:|---:|---:|
-| 1 | 1 | 1/1 = 1.0000 |
-| 3 | 2 | 2/3 = 0.6667 |
-| 6 | 3 | 3/6 = 0.5000 |
-| 8 | 4 | 4/8 = 0.5000 |
-
-Average these contributions over the **four relevant documents**:
-
-$$\operatorname{AP}=
-\frac{1+2/3+3/6+4/8}{4}\approx0.6667.$$
-
-If a relevant document is never retrieved, it contributes zero but still counts
-in the denominator. Our notebook calculates AP over the full 15-document ranking,
-including its tied tail. AP here is not AP@3.
-
-## MAP averages AP across queries
-
-Suppose Query 1 has AP = 0.6667, and Query 2 has AP = 0.5.
-
-$$\operatorname{MAP}=\frac{0.6667+0.5}{2}\approx0.5833.$$
-
-**MAP** means *mean average precision*. First calculate AP for each query,
-then average those AP values. It is not the same as averaging P@3.
-
-## MRR averages reciprocal ranks across queries
-
-Suppose Query 1's first relevant result is at rank 1, and Query 2's is at rank 2.
-
-$$\operatorname{MRR}=\frac{1/1+1/2}{2}=0.75.$$
-
-**MRR** means *mean reciprocal rank*. It considers the first relevant result
-for each query. MAP also considers later relevant results. A method can have
-MRR = 1 and still miss relevant documents from its top three.
-
-**Check your understanding:** Can two rankings have the same RR but different AP?
-Think about what happens to relevant documents after the first one.
+**Check your understanding:** Does MAP = 1 mean all documents are relevant?
 
 {{< pagebreak >}}
 
 # 11. Reading our actual notebook results
 
-We now return to the project experiment: **15 handwritten documents and 5 queries**.
-This is a different collection from our three-document teaching example.
+Our project has **15 teaching documents and 5 queries**. The following are
+mean scores across those queries. This is not the same collection as the
+three-document examples in this guide or the pizza example from Lecture 5.
 
-| Method | Mean P@3 | Mean Recall@3 | MAP | MRR |
-|---|---:|---:|---:|---:|
-| TF-IDF | 0.600 | 0.950 | 0.900 | 0.900 |
-| MLE | 0.333 | 0.500 | 0.619 | 0.815 |
-| JM (0.2) | 0.600 | 0.950 | 1.000 | 1.000 |
-| Dirichlet (20) | 0.600 | 0.950 | 1.000 | 1.000 |
+| Method | Precision@3 | MAP |
+|---|---:|---:|
+| TF-IDF cosine | 0.600 | 0.900 |
+| Dirichlet query likelihood | 0.600 | 1.000 |
+| BM25 | 0.600 | 0.900 |
 
-## Why does Recall@3 equal 0.950 rather than 1?
+All three methods find the same average number of relevant documents in their
+top three. Dirichlet places the relevant documents earlier across the full
+rankings on these five queries.
 
-Q1 has **four relevant documents**, but only three fit into the first three
-positions. TF-IDF and both smoothed models find three relevant documents there,
-so Recall@3 = 3/4 = 0.75. Each has Recall@3 = 1 on the other four queries.
+## Why does Q5 change the MAP result?
 
-The mean is $(0.75+1+1+1+1)/5=0.95$.
+For query `car coverage`, the intended relevant document D13 discusses vehicle
+insurance. D14 discusses parking and repeats the exact word `car`.
 
-## Why do MAP and MRR improve?
+- TF-IDF and BM25 put D14 first and D13 second. Since there is one relevant
+document, AP = 1/2 = 0.5 for that query.
+- Dirichlet puts D13 first, so AP = 1.0.
+- On the other four queries, all three methods have AP = 1.0.
 
-For Q5, `car coverage`, the intended relevant document D13 discusses automobile
-insurance. D14 discusses a car park and repeats `car`.
-
-- TF-IDF puts D14 first and D13 second. With one relevant document,
-  AP = RR = 1/2 = 0.5.
-- Both smoothed query-likelihood methods put D13 first, giving AP = RR = 1.
-- TF-IDF has AP = RR = 1 on the other four queries. Its mean is
-  $(1+1+1+1+0.5)/5=0.9$.
-
-**Same top-three relevance, different order:** that is why P@3 and Recall@3
-stay the same while MAP and MRR improve.
+So MAP is 0.9 for TF-IDF and BM25, and 1.0 for Dirichlet. P@3 remains 0.6
+because the first three positions contain the same number of relevant results.
 
 ## What these results do not establish
 
-The collection is small and its relevance labels are our own judgments. MLE
-has many zero-probability ties, which the code orders by document ID. Its scores
-therefore partly reflect that arbitrary tie order. These results help us explain
-behavior. They do not establish that query likelihood is generally better.
+This is a tiny collection with five queries and our own relevance labels. These
+scores explain the behavior of this example; they do not establish that
+Dirichlet is generally better. We would need more independently judged queries
+and evaluation on data held apart from any parameter tuning.
 
-**Check your understanding:** Does MAP = 1 mean all 15 documents are relevant?
+**Check your understanding:** Could two methods have the same P@3 but different
+MAP? Why?
 
 {{< pagebreak >}}
 
 # 12. Connecting the ideas to Python
 
-This short example uses our **three-document learning collection**, with
-Dirichlet $\mu=3$. It follows the same scoring steps as the notebook. The query
-words both occur in the collection.
+The project shares one implementation between the notebook and the Streamlit
+app. This small example runs all three comparison methods on the insurance
+query:
 
 ```python
-import math
-from collections import Counter
+experiment = RetrievalExperiment(documents)
+query = "car coverage"
 
-documents = {
-    "A": "search search data",
-    "B": "search data data data",
-    "C": "data science",
-}
-counts = {}
-background = Counter()
-for name, text in documents.items():
-    counts[name] = Counter(text.split())
-    background.update(counts[name])
-
-total_tokens = sum(background.values())  # 9
-mu = 3
-query = ["search", "data"]
-scores = []
-for name, word_counts in counts.items():
-    length = sum(word_counts.values())
-    score = 0.0
-    for word in query:
-        p_background = background[word] / total_tokens
-        p_word = (word_counts[word] + mu * p_background)
-        p_word = p_word / (length + mu)
-        score = score + math.log(p_word)
-    scores.append((name, score))
-
-scores.sort(key=lambda item: item[1], reverse=True)
-print(scores)  # A first, then B, then C
+for method in ["tfidf", "dirichlet", "bm25"]:
+    ranking, unknown = experiment.rank(
+        query,
+        method=method,
+        mu=20,
+        k1=1.2,
+        b=0.75,
+    )
+    print(method, ranking[:3], "unknown words:", unknown)
 ```
 
-`Counter` counts words. The background combines all document counts. The inner
-loop calculates one smoothed probability per query token and adds its log. The
-last line orders documents from the largest score to the smallest.
+Each method returns a list of document IDs and scores. The scores have
+method-specific meanings, so compare the **order** of the documents, not the
+raw scores across methods. For our Q5 example, TF-IDF and BM25 put D14 first;
+Dirichlet puts D13 first.
 
-In the actual notebook, `experiment.rank(query, method="dirichlet", mu=20)`
-uses the same idea with 15 documents. `method="mle"` removes smoothing;
-`method="jm"` uses the fixed background mixture. `method="tfidf"` uses cosine.
-
-**Try it:** Change the query to `["data"]`. Which document do you expect first?
+**Try it:** Change the query to `language model`. Which documents rise to the
+top? Then select BM25 in the Streamlit app and change $k_1$ or $b$.
 
 {{< pagebreak >}}
 
@@ -629,36 +595,33 @@ to explain each step clearly, rather than memorize the formula.
 4. For query `search data`, why does document C receive MLE likelihood zero?
    Does taking logs solve the problem?
 
-## B. Smoothing
+## B. Smoothing and BM25
 
 5. The collection has 9 tokens and 3 occurrences of `search`. What is its
    background probability? With JM background weight 0.2, what probability
    does missing `search` receive in C?
 6. C has length 2 and no `search`. Calculate its Dirichlet probability for
    `search` using $\mu=3$. What does the parameter 3 represent?
-7. Suppose $\mu=20$. Which document gets a larger background mixture weight:
-   a document of length 10 or a document of length 100?
+7. In BM25, what happens to the benefit of term frequency as a word is repeated
+   more and more? What do $k_1$ and $b$ control?
 
 ## C. Evaluation and interpretation
 
-8. The top three results are relevant, irrelevant, relevant. There are four
-   relevant documents in the full collection. Find P@3, Recall@3, and RR.
-9. A query has exactly two relevant documents, appearing at ranks 2 and 4.
-   Calculate AP and RR. Then combine this query with the example from pages
-   10-11 to calculate MAP and MRR over the two queries.
-10. Our smoothed model has MAP = 1 on five teaching queries. What can we
-    conclude? What would we still need before choosing it for a real service?
+8. The top three results are relevant, irrelevant, relevant. Find P@3 and AP.
+9. A query has relevant results at ranks 2 and 4. Calculate AP. If another
+   query has AP = 2/3, what is MAP over the two queries?
+10. Our Dirichlet model has MAP = 1 on five teaching queries. What can we
+    conclude? What would we still need before choosing a real search system?
 11. The query is `quantum teleportation`, and both words are absent from the
     collection. Does collection-based smoothing automatically fix this?
-12. Explain the experiment table from your screenshot without using a formula.
+12. Explain the experiment table and why we compare the ranking methods using
+    Precision@3 and MAP.
 
 ## A short practice explanation
 
 Complete this sentence aloud:
 
-> We used query likelihood to rank documents by ____. MLE estimates word
-> probabilities from ____. Smoothing helps when ____. We compare against ____
-> and evaluate the rankings using ____.
+> Query likelihood ranks documents by ____. Dirichlet smoothing helps when ____. TF-IDF compares ____. BM25 balances ____. We judge the rankings using ____.
 
 {{< pagebreak >}}
 
@@ -684,32 +647,32 @@ Complete this sentence aloud:
    background pseudo-count strength. It is not the number of documents, even
    though our teaching collection happens to have three documents.
 
-7. **The length-10 document.** Its background weight is 20/30, about 0.667.
-   The length-100 document gets 20/120, about 0.167.
+7. **The benefit levels off.** $k_1$ controls how quickly the term-frequency
+   benefit saturates; $b$ controls how much document length affects the score.
 
-8. **P@3 = 2/3, Recall@3 = 2/4, RR = 1.** Precision divides by retrieved
-   positions; recall divides by the total relevant documents.
+8. **P@3 = 2/3. AP = (1 + 2/3)/2 = 0.833.** The relevant results appear at
+   ranks one and three, so we average precision at those positions.
 
-9. **AP = (1/2 + 2/4)/2 = 0.5; RR = 1/2 = 0.5.** Combined with the earlier
-   query's AP of 2/3 and RR of 1, MAP = 7/12, about 0.5833, and MRR = 0.75.
+9. **AP = (1/2 + 2/4)/2 = 0.5.** MAP is the mean of the two AP values:
+   $(0.5+2/3)/2=7/12\approx0.583$.
 
-10. **Relevant documents were ordered before irrelevant documents for those
-    five fully ranked teaching queries.** This is a small result under our
-    labels. We need independent judged data and parameter tuning on separate
-    development queries before a final test on unseen queries.
+10. **The relevant documents were ordered before irrelevant documents for
+    these five queries.** This is a small result under our labels. We need
+    more independent relevance judgments and testing on separate queries.
 
-11. **No.** A word absent from the entire collection has background probability
-    zero. Our notebook reports and drops unknown words. It returns no ranking
-    if the query has no known words. This is an explicit policy.
+11. **No.** A word absent from the whole collection has background probability
+    zero. Our app reports and drops unknown words, and returns no ranking when
+    every query word is unknown. This is an explicit policy.
 
 12. **Possible explanation:** We lowercase and tokenize the text, then compare
-    TF-IDF with query likelihood using three probability estimators. Finally,
-    we check how early relevant documents appear using precision, recall,
-    MAP, and MRR.
+    TF-IDF cosine, Dirichlet query likelihood, and BM25. Precision@3 measures
+    relevance in the first three results; MAP measures how early relevant
+    documents appear across the full ranking.
 
-**Practice sentence:** We rank by the likelihood of the query words. MLE uses
-observed document frequencies. Smoothing helps with query words missing from a
-document. TF-IDF is our baseline. The metrics judge the resulting order.
+**Practice sentence:** Query likelihood estimates the chance of the query
+words under each document model. Dirichlet smoothing supports words missing from
+a document. TF-IDF compares weighted vectors. BM25 balances rarity, repetition,
+and document length. We evaluate the resulting order with Precision@3 and MAP.
 
 {{< pagebreak >}}
 
@@ -727,6 +690,12 @@ document. TF-IDF is our baseline. The metrics judge the resulting order.
 | Smoothing | Adjusting estimates to support unseen document terms |
 | Background | Word probabilities estimated from the whole collection |
 | Baseline | A comparison method |
+| BM25 | A ranking score that balances rare words, repeated terms, and document length |
+| $k_1$ | BM25 setting that controls how quickly term frequency levels off |
+| $b$ | BM25 setting that controls the document-length adjustment |
+| Precision@3 | The share of the first three results that are relevant |
+| AP | Average precision at the positions of relevant documents |
+| MAP | Mean AP across queries |
 | Relevant | Useful for the query's intended information need |
 | Parameter | A setting such as JM's 0.2 or Dirichlet's 20 |
 | OOV | Out of vocabulary: a term absent from the collection |
@@ -749,8 +718,8 @@ supports missing words, but does not understand synonyms or restore word order.*
   [Chapter 12](https://nlp.stanford.edu/IR-book/pdf/12lmodel.pdf).
 - **Smoothing research:** Zhai and Lafferty (2001),
   [A Study of Smoothing Methods for Language Models Applied to Ad Hoc IR](https://www.cs.cmu.edu/~czhai/paper/sigir2001-smooth.pdf).
-- **Evaluation:** Manning et al.,
-  [Evaluation of ranked retrieval results](https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html).
+- **BM25:** Manning et al., [Okapi BM25](https://nlp.stanford.edu/IR-book/html/htmledition/okapi-bm25-a-non-binary-model-1.html); Robertson and Zaragoza (2009), [The Probabilistic Relevance Framework: BM25 and Beyond](https://doi.org/10.1561/1500000019).
+- **Evaluation:** Manning et al., [Evaluation of ranked retrieval results](https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html).
 - **Implementation:** [Scikit-learn TfidfVectorizer](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html).
 
 All small numerical examples are worked teaching examples. The page-12 results

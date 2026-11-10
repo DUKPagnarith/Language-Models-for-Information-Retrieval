@@ -33,7 +33,7 @@ def make_word_count_table(word_counts):
 
 
 def make_result_details(experiment, document_id, query_words, method,
-                        mu, background_weight):
+                        mu, background_weight, k1, b):
     """Show how each known query word contributes for one document."""
     rows = []
 
@@ -53,20 +53,45 @@ def make_result_details(experiment, document_id, query_words, method,
         }
 
         if method != "tfidf":
-            word_probability = experiment.term_probability(
-                word,
-                document_id,
-                method=method,
-                mu=mu,
-                background_weight=background_weight,
-            )
-            row["Probability in document"] = round(word_probability, 4)
-            if word_probability == 0:
-                row["Log-score contribution"] = "-infinity"
-            else:
-                row["Log-score contribution"] = round(
-                    query_count * math.log(word_probability), 4
+            if method == "bm25":
+                document_frequency = sum(
+                    1 for counts in experiment.counts.values()
+                    if counts[word] > 0
                 )
+                inverse_document_frequency = math.log(
+                    1 + (len(experiment.document_ids) - document_frequency + 0.5)
+                    / (document_frequency + 0.5)
+                )
+                length_factor = k1 * (
+                    1 - b + b * experiment.lengths[document_id]
+                    / experiment.average_document_length
+                )
+                term_frequency_factor = (
+                    (k1 + 1) * document_count / (document_count + length_factor)
+                    if document_count else 0.0
+                )
+                row["Documents containing word"] = document_frequency
+                row["BM25 IDF"] = round(inverse_document_frequency, 4)
+                row["Length-adjusted TF"] = round(term_frequency_factor, 4)
+                row["Score contribution"] = round(
+                    query_count * inverse_document_frequency * term_frequency_factor,
+                    4,
+                )
+            else:
+                word_probability = experiment.term_probability(
+                    word,
+                    document_id,
+                    method=method,
+                    mu=mu,
+                    background_weight=background_weight,
+                )
+                row["Probability in document"] = round(word_probability, 4)
+                if word_probability == 0:
+                    row["Log-score contribution"] = "-infinity"
+                else:
+                    row["Log-score contribution"] = round(
+                        query_count * math.log(word_probability), 4
+                    )
 
         rows.append(row)
 
@@ -159,6 +184,7 @@ model_names = {
     "Maximum likelihood (MLE)": "mle",
     "Jelinek–Mercer smoothing": "jm",
     "Dirichlet smoothing": "dirichlet",
+    "BM25": "bm25",
 }
 selected_model_name = st.selectbox(
     "Choose a ranking method",
@@ -168,6 +194,8 @@ selected_method = model_names[selected_model_name]
 
 mu = 20
 background_weight = 0.2
+k1 = 1.2
+b = 0.75
 if selected_method == "dirichlet":
     mu = st.slider(
         "Dirichlet μ (mu): background support",
@@ -191,6 +219,27 @@ elif selected_method == "jm":
             "a smaller lambda gives more influence to the document."
         ),
     )
+elif selected_method == "bm25":
+    st.caption(
+        f"The collection's average document length is "
+        f"{experiment.average_document_length:.1f} words."
+    )
+    k1 = st.slider(
+        "BM25 k₁: how quickly repeated words level off",
+        min_value=0.0,
+        max_value=3.0,
+        value=1.2,
+        step=0.1,
+        help="A larger k1 lets repeated query words add more to a document's score.",
+    )
+    b = st.slider(
+        "BM25 b: document-length adjustment",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.75,
+        step=0.05,
+        help="At 0, document length is ignored; at 1, length is fully normalized.",
+    )
 
 method_explanations = {
     "tfidf": (
@@ -209,6 +258,10 @@ method_explanations = {
         "Dirichlet smoothing adds collection-based pseudo-count support to "
         "each document. The μ slider controls how much support is added."
     ),
+    "bm25": (
+        "BM25 gives more weight to rarer query words, limits how much repeated "
+        "words help, and adjusts for document length."
+    ),
 }
 st.info(method_explanations[selected_method])
 
@@ -226,6 +279,8 @@ else:
         method=selected_method,
         mu=mu,
         background_weight=background_weight,
+        k1=k1,
+        b=b,
     )
 
     st.write("**Words used from your query:** " + ", ".join(known_words))
@@ -270,6 +325,8 @@ else:
                     selected_method,
                     mu,
                     background_weight,
+                    k1,
+                    b,
                 ),
                 hide_index=True,
                 use_container_width=True,

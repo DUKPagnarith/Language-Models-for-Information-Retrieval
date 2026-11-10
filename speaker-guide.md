@@ -6,27 +6,27 @@ Hello everyone. Please use this guide to prepare together. Each member should un
 
 | Slides | Section | Time |
 |---|---|---:|
-| 1–3 | Introduction and problem statement | 2 minutes |
-| 4–5 | Background and Lecture 2 connection | 2 minutes |
-| 6–10 | Methodology | 4 minutes |
-| 11–15 | Experiment and results | 4 minutes |
-| 16–17 | Limitations and system example | 2 minutes |
-| 18 | Conclusion and future work | 1 minute |
-| 19 | References, kept visible for questions | No separate speaking time |
+| 1–3 | Introduction and objective | 2 minutes |
+| 4–6 | Lecture 2 and query likelihood | 3 minutes |
+| 7–10 | TF-IDF, BM25, and worked example | 4 minutes |
+| 11–14 | Experiment, evaluation, and results | 5 minutes |
+| 15 | Conclusion and limitations | 1 minute |
+| 16 | References, kept visible for questions | No separate speaking time |
 
 The total planned speaking time is 15 minutes, followed by about 5 minutes of questions. Press **S** in the HTML presentation for the full notes. Each slide has its own suggested timing.
 
 ## Suggested speaking parts
 
-For a team of four, one person can cover slides 1–5, one slides 6–10, one slides 11–15, and one slides 16–18. Adjust this to your actual team size. Every member should present a part, as requested in the assignment. The title slide now lists the four Team 4 members and their student IDs.
+For a team of four, one person can cover slides 1–4, one slides 5–8, one slides 9–12, and one slides 13–15. Keep slide 16 visible for questions. Every member should present a part, as requested in the assignment. The title slide lists the four Team 4 members and their student IDs.
 
 ## What to understand before presenting
 
 - Build the counts in the three-document example by hand. The collection has 14 tokens. The probability product for document C is about 0.018267 and its natural log is about −4.003.
 - Explain why a missing term makes MLE zero and why logs alone do not fix it.
 - Explain the difference between a document-level unseen word and a word absent from the whole collection.
-- Read the top results for all five queries in the notebook.
-- Explain MAP and Recall@3 using the declared relevance labels.
+- Explain how BM25 combines rare words, saturated term frequency, and document-length normalization.
+- Read the top results for the five queries in the notebook.
+- Explain Precision@3 and MAP using the declared relevance labels.
 - Run `car protection` and explain why the insurance example fails.
 
 ## Questions we may receive
@@ -49,7 +49,7 @@ Add-one assigns the same pseudo-count to every vocabulary term. Collection smoot
 
 **Why mu 20?**
 
-It is an illustrative value for documents averaging about 16 tokens. Our sensitivity table shows stable MAP and Recall@3 over the tested values. This tiny example does not establish the best parameter for other collections.
+It is an illustrative value for documents averaging about 16 tokens. Our sensitivity table shows stable Precision@3 and MAP over the tested values. This tiny example does not establish the best parameter for other collections.
 
 **How were the relevance labels chosen?**
 
@@ -57,7 +57,7 @@ We wrote binary judgments based on each query's intended information need before
 
 **Did query likelihood beat TF-IDF?**
 
-It improved the first relevant rank for Q5 and tied on the other four queries. Both smoothed models and TF-IDF have mean Recall@3 of 0.95. We cannot generalize from five handwritten queries.
+Dirichlet has MAP 1.00, while TF-IDF and BM25 have MAP 0.90; all three have Precision@3 of 0.60. Dirichlet ranks the relevant insurance document first for Q5. We cannot generalize from five handwritten queries.
 
 **Why is MLE recall only 0.50?**
 
@@ -73,7 +73,7 @@ We report and ignore terms absent from the collection. A partly unknown query us
 
 **Does lower perplexity mean better retrieval?**
 
-Not necessarily. Perplexity measures probability on held-out text. Retrieval needs relevance metrics such as MAP, MRR and Recall@3.
+Not necessarily. Perplexity measures probability on held-out text. Retrieval needs relevance measures such as Precision@3 and MAP.
 
 **Where is this used?**
 
@@ -81,7 +81,7 @@ Indri is a documented research retrieval system using language modeling with Dir
 
 **What would we improve next?**
 
-Use a larger judged benchmark, tune on development queries, evaluate on a separate test set, compare BM25, and try expansion or dense retrieval for vocabulary mismatch.
+Use a larger set of independently judged queries, tune on development queries, evaluate on a separate test set, and try expansion or dense retrieval for vocabulary mismatch.
 
 ## Before submission
 

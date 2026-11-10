@@ -26,6 +26,9 @@ class RetrievalExperiment:
             self.lengths[document_id] = sum(counts.values())
             self.collection_counts.update(counts)
         self.collection_length = sum(self.lengths.values())
+        self.average_document_length = (
+            self.collection_length / len(self.document_ids)
+        )
         self.vectorizer = TfidfVectorizer(
             tokenizer=tokenize, token_pattern=None, lowercase=False,
             norm="l2", smooth_idf=True, sublinear_tf=False,
@@ -55,7 +58,38 @@ class RetrievalExperiment:
             return (1 - background_weight) * count / length + background_weight * collection_probability
         raise ValueError("Unknown language model method.")
 
-    def rank(self, query, method="dirichlet", mu=20, background_weight=0.2):
+    def bm25_term_score(self, term, document_id, k1=1.2, b=0.75):
+        """Return one query term's BM25 contribution for a document."""
+        if k1 < 0:
+            raise ValueError("k1 must be zero or greater.")
+        if not 0 <= b <= 1:
+            raise ValueError("b must be between 0 and 1.")
+
+        document_frequency = sum(
+            1 for counts in self.counts.values() if counts[term] > 0
+        )
+        if document_frequency == 0:
+            return 0.0
+
+        document_count = self.counts[document_id][term]
+        if document_count == 0:
+            return 0.0
+
+        document_length = self.lengths[document_id]
+        length_factor = k1 * (
+            1 - b + b * document_length / self.average_document_length
+        )
+        inverse_document_frequency = math.log(
+            1 + (len(self.document_ids) - document_frequency + 0.5)
+            / (document_frequency + 0.5)
+        )
+        saturated_term_frequency = (
+            (k1 + 1) * document_count / (document_count + length_factor)
+        )
+        return inverse_document_frequency * saturated_term_frequency
+
+    def rank(self, query, method="dirichlet", mu=20, background_weight=0.2,
+             k1=1.2, b=0.75):
         known, unknown = self.prepare_query(query)
         # An all-OOV query has no evidence. Do not return an arbitrary ranking.
         if not known:
@@ -63,6 +97,16 @@ class RetrievalExperiment:
         if method == "tfidf":
             query_vector = self.vectorizer.transform([" ".join(known)])
             scores = (self.tfidf_matrix @ query_vector.T).toarray().ravel().tolist()
+        elif method == "bm25":
+            query_counts = Counter(known)
+            scores = []
+            for document_id in self.document_ids:
+                score = 0.0
+                for term, frequency in query_counts.items():
+                    score += frequency * self.bm25_term_score(
+                        term, document_id, k1=k1, b=b
+                    )
+                scores.append(score)
         else:
             query_counts = Counter(known)
             scores = []
@@ -86,15 +130,11 @@ def evaluate(ranking, relevant, k=3):
         raise ValueError("Evaluation requires at least one relevant document.")
     hits = 0
     average_precision = 0.0
-    reciprocal_rank = 0.0
     top_hits = 0
     for rank, (document_id, _) in enumerate(ranking, start=1):
         if document_id in relevant:
             hits += 1
             average_precision += hits / rank
-            if reciprocal_rank == 0:
-                reciprocal_rank = 1 / rank
             if rank <= k:
                 top_hits += 1
-    return {"P@3": top_hits / k, "Recall@3": top_hits / len(relevant),
-            "AP": average_precision / len(relevant), "RR": reciprocal_rank}
+    return {"P@3": top_hits / k, "AP": average_precision / len(relevant)}

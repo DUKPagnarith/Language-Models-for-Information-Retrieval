@@ -1,8 +1,8 @@
 ---
 title: "Language Models for Information Retrieval"
-subtitle: "Team 4 · Topic 2 · Query likelihood and smoothing"
+subtitle: "Query Likelihood, TF-IDF, and BM25"
 author: "Team 4"
-date: "November 3, 2026"
+date: "November 10, 2026"
 format:
   clean-revealjs:
     css: presentation.css
@@ -25,314 +25,239 @@ format:
     show-notes: false
 ---
 
+## Search ranking {data-chapter="1 Introduction & objectives"}
 
+**How should a search engine order its results?**
 
-## The search problem {data-chapter="1 Introduction & objectives"}
-
-A user types **“language model probability.”**
-
-Our collection contains documents about unigrams, query likelihood, bigrams, and perplexity.
+A query is short. The collection may contain thousands of documents.
 
 ::: {.big-statement}
-How can we rank the documents using the probability of the query?
+A useful ranking puts documents that meet the information need near the top.
 :::
+
+**Team 4 · Topic 2 · Lecture 2 foundations, extended to BM25**
 
 ::: {.notes}
-Time: 0:55.
-A search engine has to decide which documents to show first. Exact word matching gives us useful evidence, but it does not by itself explain how to combine that evidence. Here we ask how likely each document's language model is to generate the words in our query. Our goal is to give relevant documents a higher rank.
+Time: 0:35. Introduce the team's question. A document is relevant when it helps with what the user needs, not merely when it repeats the query words. The presentation starts from our assigned language-model retrieval topic and connects it to the TF-IDF and BM25 ideas from Lecture 5.
 :::
 
-## The query likelihood idea {data-chapter="1 Introduction & objectives"}
+## Our objective {data-chapter="1 Introduction & objectives"}
 
-1. Estimate a language model for each document.
-2. Calculate how likely that model is to generate the query.
-3. Rank documents by that likelihood.
+We compare three ways to rank the same small document collection:
 
-**Input:** a query and a document collection.  
-**Output:** documents ordered by score.
+- **TF-IDF cosine similarity:** compare weighted word vectors.
+- **Dirichlet query likelihood:** estimate how likely the query is under a document model.
+- **BM25:** weight rare query words, limit repeated-word gains, and adjust for document length.
+
+We also explain when these scores can be misleading.
 
 ::: {.notes}
-Time: 0:45.
-We can imagine each document as a small source of words. If a document often uses the words in our query, it should usually give that query a higher probability. We use this as a ranking model. We do not ask the model to write an answer, and a high score is not proof that the document satisfies the user.
-Source: Manning, Raghavan and Schütze (2008), Chapter 12; Ponte and Croft (1998), https://ciir.cs.umass.edu/pubfiles/ir-120.pdf.
+Time: 0:40. MLE is useful for explaining why smoothing is needed, but our main comparison focuses on three practical approaches: TF-IDF, Dirichlet query likelihood, and BM25. We use the same documents and queries for a fair comparison.
 :::
 
-## Connection to Lecture 2 {data-chapter="2 Background"}
+## Lecture 2: count words and estimate probabilities {data-chapter="2 Background"}
 
-| Lecture 2 | Our retrieval model |
+| Lecture 2 idea | How it supports retrieval |
 |---|---|
-| Bag-of-words | Count terms in each document |
-| N-gram probability | Estimate the probability of query text |
-| Log probabilities | Add log scores for numerical stability |
-| Unseen events and smoothing | Give partial matches a usable score |
+| Bag of words | Count each term in each document. |
+| Unigram language model | Estimate the probability of each query word. |
+| Log probability | Add word scores instead of multiplying tiny numbers. |
+| Smoothing | Give a partial match a nonzero probability. |
 
-**Our choice:** a unigram model, so word order is ignored.
-
-::: {.source}
-Course lecture: slides 4–8 and 12–20.
-:::
+**Unigram assumption:** word order is ignored.
 
 ::: {.notes}
-Time: 1:00. Background section totals 2:00 across slides 4–5.
-Lecture 2 gives us the foundation. A bigram model uses the previous word as context. We use unigrams because short documents and queries give us limited counts. The probability still comes from observed words, but we assume independence instead of modeling word order. Logs preserve ranking and help avoid underflow. They do not solve zero probabilities.
-Source: DORN Dawin, Lecture 2: NLP Foundations I: Bag-of-Words and Language Models, October 13, 2026, slides 4–8, 12–20.
+Time: 0:45. This is our connection to Lecture 2. Bag-of-words gives us counts. A unigram model treats the query as a sequence of words whose probabilities can be estimated from a document. We use logarithms so products become sums. The assumption is simple and interpretable, but it loses word order.
+Source: DORN Dawin, Lecture 2, slides 4–8 and 12–20.
 :::
 
-## Earlier retrieval methods {data-chapter="2 Background"}
+## Query likelihood {data-chapter="3 Methodology"}
 
-| Method | How it matches | Main gap |
-|---|---|---|
-| Boolean AND | Every required term must appear | Partial matches are rejected |
-| TF-IDF cosine | Similarity of weighted term vectors | Depends on exact vocabulary |
-| Query likelihood | Probability under each document model | Needs reliable probability estimates |
+For each document, estimate its own word model:
 
-Ponte and Croft introduced a language modeling approach to IR in **1998**.
+$$P_{MLE}(w\mid d)=\frac{c(w,d)}{|d|}$$
 
-::: {.notes}
-Time: 1:00.
-Boolean AND is useful when we know exactly which terms are required, but it does not give a graded ranking of partial matches. TF-IDF compares weighted term vectors. Query likelihood gives us another scoring principle based on probability estimation. We should not claim that it always outperforms TF-IDF. It also remains a lexical method in this unigram version.
-Sources: Ponte and Croft (1998), https://doi.org/10.1145/290941.291008; course Lecture 2, slide 4; Manning et al. (2008), Chapter 12.
-:::
-
-## Scoring a document {data-chapter="3 Methodology"}
-
-$$P_{\mathrm{MLE}}(w\mid d)=\frac{c(w,d)}{|d|}$$
+Then score the query using that model:
 
 $$s(d,q)=\sum_{w\in q}c(w,q)\log P(w\mid d)$$
 
-- $c(w,d)$ counts a word in the document. $|d|$ is its token count.
-- Sum over distinct query terms. Repeated terms count again.
-- **Higher is better:** a log score of −4 ranks above −8.
+**Read it as:** how likely is this document's word model to produce the query?
 
 ::: {.notes}
-Time: 0:50. Methodology section totals 4:00 across slides 6–10.
-The MLE estimate is a word's relative frequency in a document. Under the unigram assumption, we multiply one probability for every query token. Taking logs gives the sum shown here. Bayes' rule gives P(d given q) proportional to P(q given d) times P(d). We assume equal document priors, which lets us rank by query likelihood. Query likelihood is a model of query generation, not a calibrated probability of user satisfaction.
-Source: Lecture 2, slides 13–15; Manning et al., Chapter 12.
+Time: 0:50. The count c(w,d) is how often word w occurs in document d. The length of d is its number of word tokens. We add one log probability per query occurrence. A higher log score, such as negative 4 instead of negative 8, is better. This is query likelihood, not a calibrated probability that the document is relevant.
+Source: Lecture 2, slides 13–18; Ponte and Croft (1998).
 :::
 
-## A missing word makes the whole product zero {data-chapter="3 Methodology"}
+## Why query likelihood needs smoothing {data-chapter="3 Methodology"}
 
-Query: **“search documents”**
+Query: **search documents**<br>
+Document: **language models rank documents**
 
-Document: **“language models rank documents”**
+Without smoothing, search has probability zero in this document:
 
-$$P_{\mathrm{MLE}}(\text{search}\mid d)=0$$
+$$P_{MLE}(\text{search}\mid d)=0\quad\Rightarrow\quad P(q\mid d)=0$$
 
-$$P(q\mid d)=0\times P(\text{documents}\mid d)=0$$
-
-Many partial matches tie at zero. In log space, their score is $-\infty$.
-
-::: {.notes}
-Time: 0:40.
-This is the same problem as an unseen bigram in Lecture 2. Even though the document contains documents, the missing word search makes the full query probability zero. If many documents miss one query word, we cannot distinguish their partial evidence. Taking a logarithm simply turns zero into negative infinity. We need smoothing before calculating the log.
-Source: Lecture 2, slide 18.
-:::
-
-## Collection-based smoothing {data-chapter="3 Methodology"}
+Dirichlet smoothing adds support from the whole collection:
 
 $$P_\mu(w\mid d)=\frac{c(w,d)+\mu P(w\mid C)}{|d|+\mu}$$
 
-**Dirichlet:** $\mu$ controls collection-based pseudo-counts.
-
-$$P_\lambda(w\mid d)=(1-\lambda)\frac{c(w,d)}{|d|}+\lambda P(w\mid C)$$
-
-**Jelinek–Mercer:** $\lambda$ is a fixed **background weight** here.
-
-::: {.small}
-$P(w\mid C)=c(w,C)/|C|$. Collection frequencies replace the uniform background used by add-one smoothing.
+::: {.notes}
+Time: 0:45. A single absent word makes the whole unsmoothed query probability zero, even though the document matches documents. Dirichlet smoothing combines evidence in this document with background word frequencies from all documents. Mu controls how much background support we add. The smoothed score remains a query-generation score.
+Source: Lecture 2, slide 20; Zhai and Lafferty (2001).
 :::
+
+## TF-IDF: a weighted word-vector baseline {data-chapter="3 Methodology"}
+
+- **TF:** how often the query word appears in this document.
+- **IDF:** how rare the word is across the document collection.
+- **Cosine similarity:** how closely the query and document weight vectors point in the same direction.
+
+Rare, repeated query words can raise a document's score.
 
 ::: {.notes}
-Time: 1:00.
-Dirichlet smoothing adds pseudo-counts based on collection probabilities. The effective background weight is mu divided by document length plus mu. For the same mu, a short document therefore gets more background support. JM uses the same fixed background weight for every document. In this presentation lambda always means background weight. Other sources may reverse that convention. Lecture 2 uses add-one smoothing, which assigns uniform pseudo-counts instead of using collection frequencies.
-Source: Zhai and Lafferty (2001), https://www.cs.cmu.edu/~czhai/paper/sigir2001-smooth.pdf. Lecture 2, slide 20.
+Time: 0:45. TF-IDF combines a within-document frequency with a collection-wide rarity weight. Cosine similarity compares the query vector and the document vector after normalizing their lengths. This is a similarity score, not a probability. Different TF-IDF implementations use different frequency and IDF formulas; our project uses scikit-learn's smoothed IDF and cosine-normalized vectors.
+Source: Lecture 5, slides 11–20.
 :::
 
-## A worked calculation {data-chapter="3 Methodology"}
+## What TF-IDF can get wrong {data-chapter="3 Methodology"}
 
-Collection: **14 tokens**, with `search` twice and `documents` three times.
+**Keyword stuffing:** raw term frequency can reward repeating one word too much.
 
-Document C: **“language models rank documents”**, length 4. Set $\mu=5$.
+**Document length:** long documents have more chances to contain query words; cosine normalization can also penalize a long, useful document.
 
-$$P(\text{search}\mid C_{doc})=\frac{0+5(2/14)}{4+5}\approx0.0794$$
-
-$$P(\text{documents}\mid C_{doc})=\frac{1+5(3/14)}{4+5}\approx0.2302$$
-
-$$P(q\mid C_{doc})\approx0.0183,\qquad s\approx-4.003$$
+Lecture 5's pizza example shows both problems in a six-document collection.
 
 ::: {.notes}
-Time: 0:50.
-This uses a separate three-document example, not the full experiment. Document A is search engines rank documents documents. B is search engines index web pages. C is language models rank documents. Their lengths sum to 14. Search occurs twice in the collection and documents occurs three times. After smoothing, document C receives a small nonzero probability for search. The notebook checks the exact calculation. C_doc means the particular document C, while the background collection probabilities use all three documents.
+Time: 0:35. The lecture compares a short relevant document, a long relevant guide, and a short spam-like document repeating pizza. TF-IDF cosine puts the short relevant document first, but the repeated-word document second and the long relevant document fourth. This motivates a different balance of term frequency and document length. The pizza collection is a separate teaching example, not our experiment.
+Source: Lecture 5, slides 13–20.
 :::
 
-## Parameters and assumptions {data-chapter="3 Methodology"}
+## BM25 combines rarity, saturation, and length {data-chapter="3 Methodology"}
 
-- We use **$\mu=20$** and **$\lambda=0.2$** in the main experiment.
-- Larger $\mu$ gives more weight to collection frequencies.
-- Unigrams ignore order and do not identify synonyms.
-- We report and drop terms absent from the collection.
+$$\operatorname{BM25}(d,q)=\sum_{t\in q}\operatorname{IDF}(t)\;\frac{f(t,d)(k_1+1)}{f(t,d)+k_1\left(1-b+b\frac{|d|}{\operatorname{avgdl}}\right)}$$
 
-**All query terms unknown:** return no ranking.
+- **IDF:** rare query words count more.
+- **Saturated TF:** repetition helps, then its extra benefit levels off.
+- **Length adjustment:** compare document length with the collection average.
+
+BM25 is a ranking score, not a query probability.
 
 ::: {.notes}
-Time: 0:40.
-The experiment uses very short documents, with an average length of about 16 tokens, so mu 20 is an illustrative setting at that scale. We do not claim it is optimal. We later vary mu to see how the result changes. Collection smoothing cannot give positive probability to a word that is absent from the entire collection. We explicitly report ignored words. For a partly unknown query, we rank using the remaining words.
+Time: 0:55. f(t,d) is the count of query term t in document d. The denominator adjusts this count for document length. Average document length is avgdl. We use the standard BM25 term-frequency and length-normalization form, summed over query terms. This version uses the Lecture 5 smoothed IDF formula shown on the next slide. BM25 is a well-established lexical ranking method; it does not understand synonyms by itself.
+Source: Lecture 5, slides 22–34; Robertson and Zaragoza (2009).
 :::
 
-## Experiment setup {data-chapter="4 Experiment & results"}
+## BM25 parameters {data-chapter="3 Methodology"}
 
-**15 documents · 5 queries · declared binary relevance labels**
+$$\operatorname{IDF}(t)=\ln\!\left(1+\frac{N-\operatorname{df}(t)+0.5}{\operatorname{df}(t)+0.5}\right)$$
 
-| Choice | What we do |
+- **k₁ = 1.2** controls how quickly repeated terms level off.
+- **b = 0.75** controls the document-length adjustment.
+- **b = 0** ignores length; **b = 1** uses full length normalization.
+
+These are common starting settings, not values guaranteed to be best for every collection.
+
+::: {.notes}
+Time: 0:45. N is the number of documents, and df is the number containing the term. The half-counts smooth the IDF. A larger k1 lets repeated occurrences keep contributing for longer. A higher b penalizes documents that are longer than average more strongly. We use k1 1.2 and b 0.75 as the lecture's default example, not as tuned values.
+Source: Lecture 5, slides 22–30; Stanford Introduction to Information Retrieval, Okapi BM25.
+:::
+
+## BM25 worked example from Lecture 5 {data-chapter="3 Methodology"}
+
+Query: **pizza oven** · Relevant documents: D1 and D3
+
+| Method | Top results | Precision@2 |
+|---|---|---:|
+| TF-IDF cosine | D1, D2 | 0.5 |
+| BM25 | D1, D3 | 1.0 |
+
+BM25 limits D2's advantage from repeating **pizza** and keeps the long relevant D3 near the top.
+
+::: {.notes}
+Time: 0:45. This reproduces the lecture's separate six-document worked example. D2 repeats pizza five times but does not answer the need. D3 is a long guide that discusses both pizza and ovens. With k1 1.2 and b 0.75, BM25 ranks D1 and D3 first, so both top-two documents are relevant. The lecture uses Precision@2 here. Our project evaluation uses Precision@3 consistently.
+Source: Lecture 5, slides 28–34.
+:::
+
+## Our experiment {data-chapter="4 Experiment & results"}
+
+**15 documents · 5 queries · hand-written relevance labels**
+
+| Choice | Setting |
 |---|---|
-| Preprocessing | Lowercase alphabetic words, no stemming |
-| Baseline | TF-IDF cosine similarity |
-| Language models | MLE, JM (0.2), Dirichlet (20) |
-| Evaluation | P@3, Recall@3, MAP, MRR |
+| Text processing | Lowercase alphabetic words; no stemming |
+| Methods | TF-IDF cosine, Dirichlet query likelihood, BM25 |
+| Parameters | Dirichlet μ = 20; BM25 k₁ = 1.2, b = 0.75 |
+| Judgments | Relevant documents declared for each query by our team |
 
-This is a teaching collection with our own labels, not a benchmark.
-
-::: {.notes}
-Time: 0:40. Experiment section totals 4:00 across slides 11–15.
-Both methods use the same collection and tokenization. We keep stop words and do not stem, so model and models remain different terms. The five queries cover language models, smoothing, crawling, ranking, and car coverage. Labels are declared in the collection before we compare methods. We include all documents in the ranked lists, including zero-score tails, and break exact ties by document ID.
-:::
-
-## Python experiment {data-chapter="4 Experiment & results"}
-
-```python
-experiment = RetrievalExperiment(documents)
-
-for query in queries:
-    ranking, unknown = experiment.rank(
-        query["text"], method="dirichlet", mu=20
-    )
-    metrics = evaluate(ranking, query["relevant"])
-    print(query["id"], ranking[:3], metrics)
-```
-
-The notebook includes the full implementation, outputs, and checks.
+This is a small teaching collection, not a benchmark.
 
 ::: {.notes}
-Time: 0:40.
-We first count words in each document and in the whole collection. For each query, we estimate a probability for every known query term, add the log probabilities, and sort documents from highest to lowest. The full notebook also runs TF-IDF, MLE and JM. It saves all ranked lists and metrics as CSV files. No API or model download is needed to run the experiment.
+Time: 0:45. Every method uses the same 15 documents and five queries. We kept the pre-existing hand-written relevance labels, and we apply the same two metrics to each ranked list. These results help us understand this example collection. Five queries are not enough to claim one method is generally better.
 :::
 
-## Results on our collection {data-chapter="4 Experiment & results"}
+## Two evaluation measures {data-chapter="4 Experiment & results"}
 
-::: {.columns}
-::: {.column width="64%"}
-![](assets/comparison.png){width=100% fig-alt="MAP and mean Recall at 3 for TF-IDF, MLE, JM and Dirichlet on five teaching queries."}
+**Precision@3** asks: *How many of the first three results are relevant?*
+
+$$P@3=\frac{\text{relevant documents in top 3}}{3}$$
+
+**Average Precision (AP)** checks precision at each relevant result's position. **MAP** is the mean AP over our five queries.
+
+For ranks **relevant, not relevant, relevant**: P@3 = 2/3, AP = (1 + 2/3)/2 = 0.833.
+
+::: {.notes}
+Time: 0:55. Precision at three is easy to explain because users often focus on the first few results. It does not tell us where relevant documents appear after rank three. Average precision rewards a ranking when relevant documents appear early throughout the ranked list. We average AP over the five queries to get MAP. The example has two relevant documents at ranks one and three. Precision at rank one is one; precision at rank three is two-thirds; AP is their average. P@3 and MAP answer complementary questions without making the results slide crowded.
 :::
-::: {.column width="36%"}
-::: {.small}
-| Method | MAP | Recall@3 |
+
+## Results on our five queries {data-chapter="4 Experiment & results"}
+
+| Method | Precision@3 | MAP |
 |---|---:|---:|
-| TF-IDF | 0.900 | 0.950 |
-| MLE | 0.619 | 0.500 |
-| JM | 1.000 | 0.950 |
-| Dirichlet | 1.000 | 0.950 |
+| TF-IDF cosine | 0.600 | 0.900 |
+| Dirichlet query likelihood | 0.600 | 1.000 |
+| BM25 | 0.600 | 0.900 |
 
-Smoothed models improve the first relevant rank on **one of five queries**.
-:::
-:::
-:::
+All three have the same mean Precision@3. Dirichlet ranks the relevant documents earlier overall in this small sample.
 
 ::: {.notes}
-Time: 1:00.
-MAP is mean average precision over the full ranked lists. Recall at 3 is the fraction of relevant documents found in the first three results, averaged across queries. Both smoothed models tie TF-IDF on mean Recall at 3. They improve MAP on this example because of the insurance query on the next slide. MLE has many zero-probability ties, so its score depends on our declared document-ID tie order. With five handwritten queries, these results cannot show general superiority or statistical significance. MRR is 0.900 for TF-IDF, 0.815 for MLE, and 1.000 for JM and Dirichlet. Exact values are in results/summary.csv.
+Time: 0:50. All methods have mean Precision at three of 0.60. Dirichlet reaches MAP 1.00 on our five queries. TF-IDF and BM25 each have MAP 0.90. These are descriptive results for a tiny hand-labeled collection, not a statistical test or evidence of general superiority. BM25 is still useful as a strong lexical baseline, and the lecture's separate pizza example illustrates why its formula is attractive.
 :::
 
-## Why Q5 changes rank {data-chapter="4 Experiment & results"}
+## A vocabulary mismatch remains {data-chapter="4 Experiment & results"}
 
-Query: **“car coverage”** · Intended need: vehicle insurance
+Query: **car coverage** · Intended need: vehicle insurance
 
-| Method | First result | Second result |
-|---|---|---|
-| TF-IDF | D14: car parking | D13: automobile insurance |
-| Dirichlet | D13: automobile insurance | D14: car parking |
+- TF-IDF and BM25 place the parking document D14 first because it repeats **car**.
+- Dirichlet places the insurance document D13 first because it gives partial evidence from **coverage**.
+- None of the methods knows that **car** and **automobile** mean similar things.
 
-D14 repeats `car`. D13 contains `coverage`, but uses `automobile`.
-
-**What we learned:** smoothing preserves useful partial evidence. It did not learn that `car` and `automobile` are synonyms.
+Lexical matching can rank words well without understanding their meaning.
 
 ::: {.notes}
-Time: 0:50.
-D14 discusses a car park and uses car twice. D13 discusses insurance and uses coverage. TF-IDF favors D14, while smoothed query likelihood puts D13 first. We should keep the interpretation narrow. The method combines probabilities in a different way. It has not learned the meaning of automobile. If we change the query to car protection, protection is unknown and dropped, and both methods favor parking. That diagnostic failure is included in the notebook.
+Time: 0:40. On Q5, BM25 gives D14 a score of about 3.235 and D13 about 2.347, so it leaves the parking document first. Dirichlet ranks D13 first in this example. This is a vocabulary mismatch: the relevant document talks about an automobile rather than using the query's word car. BM25 improves term-frequency and length weighting; it does not add semantic matching.
 :::
 
-## Sensitivity to smoothing {data-chapter="4 Experiment & results"}
+## Takeaways {data-chapter="5 Conclusion"}
 
-{{< include results/sensitivity-slide.md >}}
+- Query likelihood ranks by how well a document model explains the query.
+- Dirichlet smoothing gives unseen query words background support.
+- BM25 balances rare words, repeated terms, and document length.
+- P@3 and MAP show how relevant documents appear in the ranking.
 
-We vary $\mu$ on the same five queries. This is **sensitivity analysis**, not held-out tuning.
-
-For a real study, choose parameters on development queries and report results on separate test queries.
+**Next step:** test on more queries with relevance judgments made before comparing methods.
 
 ::: {.notes}
-Time: 0:50.
-The values here come from the executed notebook. We should read the actual table and explain whether the small collection changes under this range. Stable metrics do not mean mu never matters. As mu approaches zero, the estimates approach MLE. As it becomes very large, document models approach the collection model and score differences shrink. We should not select the best value on these five queries and call that an unbiased final test.
-Source for smoothing analysis background: Zhai and Lafferty (2001), https://www.cs.cmu.edu/~czhai/paper/sigir2001-smooth.pdf.
+Time: 0:35. Close by emphasizing the difference between the models. Query likelihood is probability-based and needs smoothing. BM25 is a lexical score with term-frequency saturation and relative length normalization. Both need relevance judgments to evaluate their rankings. Our next step is a larger, independently judged query set.
 :::
 
-## Limitations and comparison {data-chapter="5 Limitations & discussion"}
+## References {data-chapter="5 Conclusion"}
 
-| Limitation | Consequence or next step |
-|---|---|
-| Exact vocabulary | `car protection` still favors parking |
-| Word order ignored | Unigrams cannot distinguish reordered words |
-| Parameter choice | Tune smoothing on development queries |
-| Tiny, manually judged collection | Use an independent judged benchmark |
-
-TF-IDF is a simple baseline. BM25 adds term-frequency saturation and length normalization, but also relies mainly on lexical matching.
+1. DORN Dawin. *Lecture 2: NLP Foundations I: Bag-of-Words and Language Models*. ITC, October 2026.
+2. DORN Dawin. *Lecture 5: From TF-IDF to BM25: Probabilistic Retrieval*. ITC, November 2026.
+3. Manning, C. D., Raghavan, P., & Schütze, H. (2008). *Introduction to Information Retrieval*, Chapter 12. [Chapter](https://nlp.stanford.edu/IR-book/html/htmledition/okapi-bm25-a-non-binary-model-1.html)
+4. Ponte, J. M., & Croft, W. B. (1998). “A Language Modeling Approach to Information Retrieval.” *SIGIR*, 275–281.
+5. Robertson, S., & Zaragoza, H. (2009). “The Probabilistic Relevance Framework: BM25 and Beyond.” *Foundations and Trends in Information Retrieval*, 3(4), 333–389.
 
 ::: {.notes}
-Time: 1:00. Limitations and discussion section totals 2:00 across slides 16–17.
-The model remains limited by word counts. Bigrams or phrase features could help with order, while query expansion or dense retrieval could help with vocabulary mismatch. Our English tokenizer also needs a different segmentation strategy for Khmer. We have not measured retrieval latency or tested a large collection. Our experiment compares TF-IDF directly. BM25 is a further comparison to add, not a result we have already measured.
-:::
-
-## A documented IR system: Indri {data-chapter="5 Limitations & discussion"}
-
-The **Lemur Project's Indri** uses language modeling for retrieval.
-
-Its documentation describes query-likelihood scoring with **Dirichlet smoothing** and returned log scores.
-
-Its documented default is **$\mu=2500$**. That setting is not automatically suitable for our short teaching documents.
-
-::: {.source}
-[Lemur Project: Indri Document Scoring](https://sourceforge.net/p/lemur/wiki/Indri%20Document%20Scoring/)
-:::
-
-::: {.notes}
-Time: 1:00.
-Indri gives us a concrete system example for the assignment. Its documentation explains why scores are logs and describes Dirichlet smoothing. The documented default is 2500. Our experiment uses much shorter documents and a smaller demonstration value. We should not copy a toolkit default without checking it on the collection. Indri is a documented research retrieval system. We are not claiming that every current commercial search engine uses this model.
-Sources: https://sourceforge.net/p/lemur/wiki/Indri%20Document%20Scoring/ and https://www.lemurproject.org/lemur/IndriQueryLanguage.php. Accessed November 3, 2026.
-:::
-
-## Conclusion and next steps {data-chapter="6 Conclusion & future work"}
-
-::: {.big-statement}
-Query likelihood ranks documents by how likely their word distributions are to generate the query.
-:::
-
-Smoothing makes partial matches usable. Our experiment shows a benefit on one query and a remaining vocabulary failure.
-
-**Next step:** evaluate on a judged benchmark, tune on development queries, and compare BM25 and query expansion.
-
-::: {.notes}
-Time: 1:00. Conclusion and future work section.
-What we learned is that the probability estimates matter as much as the scoring formula. The method connects directly to Lecture 2 through counts, independence assumptions, logs, and smoothing. Our small experiment helps us understand the behavior, but a larger evaluation is needed before choosing a model for a real service. Thank you Lokru and everyone. We are ready for your questions.
-:::
-
-## References {.small data-chapter="7 References"}
-
-- DORN Dawin (2026). *Lecture 2: NLP Foundations I: Bag-of-Words and Language Models*. ITC, slides 4–8, 12–20.
-- *Group Discussion Topics: Retrieval Models*. Supplied handout, pp. 1 and 3.
-- Manning, Raghavan & Schütze (2008). *Introduction to Information Retrieval*, [Chapter 12](https://nlp.stanford.edu/IR-book/pdf/12lmodel.pdf).
-- Ponte & Croft (1998). *A Language Modeling Approach to Information Retrieval*. [SIGIR paper](https://ciir.cs.umass.edu/pubfiles/ir-120.pdf).
-- Zhai & Lafferty (2001). *A Study of Smoothing Methods for Language Models Applied to Ad Hoc Information Retrieval*. [SIGIR paper](https://www.cs.cmu.edu/~czhai/paper/sigir2001-smooth.pdf).
-- Lemur Project. [Indri scoring](https://sourceforge.net/p/lemur/wiki/Indri%20Document%20Scoring/) and [query language](https://www.lemurproject.org/lemur/IndriQueryLanguage.php).
-- Scikit-learn. [TfidfVectorizer API](https://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.TfidfVectorizer.html).
-
-::: {.notes}
-References remain visible for discussion. Web documentation accessed November 3, 2026. The Python collection is a handwritten teaching example. All experiment results come from the accompanying notebook, not from the cited papers. Full practice questions and answers are in the notebook and speaker guide.
+Time: 0:20. All course slide examples are attributed in the notes where they appear. The main theoretical sources are the language-modeling approach of Ponte and Croft and the probabilistic relevance framework reviewed by Robertson and Zaragoza.
 :::
